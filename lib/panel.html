@@ -5,7 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>DSH Cookie Guard</title>
 <style>
+  /* 浅色（默认）。所有颜色都必须走变量：这套页面是独立文档，宿主的 CSS 变量
+     传不进 iframe，深色只能在这里自带一份。 */
   :root {
+    color-scheme: light;
     --bg: #f6f7f9;
     --card: #ffffff;
     --line: #e6e8ec;
@@ -15,6 +18,61 @@
     --warn: #d97706;
     --bad: #dc2626;
     --accent: #2563eb;
+    --btn-bg: #ffffff;
+    --chip-bg: #eef0f3;
+    --chip-fg: #9aa1ab;
+    --tag-info-bg: #eef2ff;
+    --tag-ok-bg: #ecfdf5;
+    --tag-warn-bg: #fffbeb;
+    --tag-bad-bg: #fef2f2;
+    --skel: rgba(127, 127, 127, .18);
+  }
+  /* 深色。取值对齐 DSH 官方 ui-theme 令牌（bg-layer-2/1、border-l2、
+     label-primary/tertiary、state-business-primary、state-error-primary），
+     这样嵌在宿主设置页里时和周围界面是同一套观感。 */
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #17171a;
+    --card: #212123;
+    --line: #ffffff1f;
+    --text: #ebeef2;
+    --muted: #adb2b8;
+    --ok: #4cc38a;
+    --warn: #f0b429;
+    --bad: #ff6b6b;
+    --accent: #7aaaff;
+    --btn-bg: #292929;
+    --chip-bg: #ffffff14;
+    --chip-fg: #979da6;
+    --tag-info-bg: rgba(122, 170, 255, .14);
+    --tag-ok-bg: rgba(76, 195, 138, .14);
+    --tag-warn-bg: rgba(240, 180, 41, .14);
+    --tag-bad-bg: rgba(255, 107, 107, .14);
+    --skel: rgba(255, 255, 255, .14);
+  }
+  /* 兜底：脚本没跑起来（或浏览器里禁用 JS）时也得跟随系统深色。
+     块内变量必须与上面 [data-theme="dark"] 完全一致 —— 测试会逐项比对。 */
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme]) {
+      color-scheme: dark;
+      --bg: #17171a;
+      --card: #212123;
+      --line: #ffffff1f;
+      --text: #ebeef2;
+      --muted: #adb2b8;
+      --ok: #4cc38a;
+      --warn: #f0b429;
+      --bad: #ff6b6b;
+      --accent: #7aaaff;
+      --btn-bg: #292929;
+      --chip-bg: #ffffff14;
+      --chip-fg: #979da6;
+      --tag-info-bg: rgba(122, 170, 255, .14);
+      --tag-ok-bg: rgba(76, 195, 138, .14);
+      --tag-warn-bg: rgba(240, 180, 41, .14);
+      --tag-bad-bg: rgba(255, 107, 107, .14);
+      --skel: rgba(255, 255, 255, .14);
+    }
   }
   * { box-sizing: border-box; }
   body {
@@ -39,11 +97,11 @@
   .arrow { color: var(--muted); font-size: 26px; }
   .tag {
     font-size: 12px; padding: 3px 9px; border-radius: 999px;
-    background: #eef2ff; color: var(--accent); font-weight: 600;
+    background: var(--tag-info-bg); color: var(--accent); font-weight: 600;
   }
-  .tag.ok { background: #ecfdf5; color: var(--ok); }
-  .tag.warn { background: #fffbeb; color: var(--warn); }
-  .tag.bad { background: #fef2f2; color: var(--bad); }
+  .tag.ok { background: var(--tag-ok-bg); color: var(--ok); }
+  .tag.warn { background: var(--tag-warn-bg); color: var(--warn); }
+  .tag.bad { background: var(--tag-bad-bg); color: var(--bad); }
   .hero .when { color: var(--muted); font-size: 13px; margin-top: 12px; }
 
   .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
@@ -68,21 +126,73 @@
   .actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
   button {
     font: inherit; padding: 9px 16px; border-radius: 9px; cursor: pointer;
-    border: 1px solid var(--line); background: #fff; color: var(--text);
+    border: 1px solid var(--line); background: var(--btn-bg); color: var(--text);
   }
   button:disabled { cursor: not-allowed; opacity: 1; }
   button:disabled, button.primary:disabled {
-    background: #eef0f3; border-color: var(--line); color: #9aa1ab;
+    background: var(--chip-bg); border-color: var(--line); color: var(--chip-fg);
   }
   button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
   button.ghost { background: transparent; border-style: dashed; }
   .hint { color: var(--muted); font-size: 12px; }
 
   footer { color: var(--muted); font-size: 12px; line-height: 1.8; }
-  code { background: #eef0f3; padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+  code { background: var(--chip-bg); padding: 1px 5px; border-radius: 4px; font-size: 12px; }
   .dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; background: var(--ok); margin-right: 6px; }
   .dot.off { background: var(--muted); }
 </style>
+<script>
+/* ── 跟随宿主深浅色 ──────────────────────────────────────────────────
+   这个页面是独立文档（由 webServer 单独托管），宿主的 --dsw-* 令牌和
+   body[data-ds-dark-theme] 都传不进来，所以深色必须自己算：
+
+   1. 宿主把主题放在 iframe 地址的 ?theme=dark|light 上（首帧就是对的颜色）；
+   2. 之后宿主主题变了，用 postMessage 发一条 { type: 'cookie-guard:theme' }；
+   3. 单独打开（浏览器 / 桌面快捷方式）时没人告诉我们，退回系统偏好。
+
+   写的是 <html data-theme="dark">，CSS 里的 :root[data-theme="dark"] 生效；
+   data-theme 为空时交给 @media (prefers-color-scheme: dark) 兜底。 */
+(function () {
+  var MESSAGE = 'cookie-guard:theme';
+  var root = document.documentElement;
+  var query = typeof window.matchMedia === 'function'
+    ? window.matchMedia('(prefers-color-scheme: dark)')
+    : null;
+  var fromHost = null;   // 宿主明确告知的主题；null = 还没人告诉我们
+
+  function apply(theme) {
+    if (theme === 'dark' || theme === 'light') root.setAttribute('data-theme', theme);
+    else root.removeAttribute('data-theme');
+  }
+
+  function readFromUrl() {
+    try {
+      var want = new URLSearchParams(location.search).get('theme');
+      if (want === 'dark' || want === 'light') return want;
+    } catch (e) { /* 老浏览器没有 URLSearchParams */ }
+    return null;
+  }
+
+  fromHost = readFromUrl();
+  apply(fromHost);
+
+  window.addEventListener('message', function (event) {
+    var data = event && event.data;
+    if (!data || data.type !== MESSAGE) return;
+    if (data.theme !== 'dark' && data.theme !== 'light') return;
+    fromHost = data.theme;
+    apply(fromHost);
+  });
+
+  if (query) {
+    var onSystemChange = function () {
+      if (fromHost === null) apply(query.matches ? 'dark' : 'light');
+    };
+    if (typeof query.addEventListener === 'function') query.addEventListener('change', onSystemChange);
+    else if (typeof query.addListener === 'function') query.addListener(onSystemChange);
+  }
+})();
+</script>
 </head>
 <body>
 <div class="wrap">

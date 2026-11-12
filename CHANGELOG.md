@@ -1,5 +1,36 @@
 # 更新记录
 
+## v0.3.6 — 2026-11-12
+
+**设置页的面板现在跟随宿主的深浅色。**
+
+面板是 `webServer` 单独托管的一份 HTML 文档，跨在 `http://127.0.0.1:<port>` 上，
+宿主的 `--dsw-*` 令牌和 `body[data-ds-dark-theme]` 都进不了它的 iframe ——
+所以宿主切到深色时，这一页仍然是白底黑字，放在一起很扎眼。
+
+- `lib/panel.html`：配色全部改成变量，新增一整套深色取值（对齐 DSH 官方 ui-theme：
+  `bg-layer-2/1`、`border-l2`、`label-primary/tertiary`、`state-business-primary`、
+  `state-error-primary`），并声明 `color-scheme` 让原生控件（滚动条、下拉）一起变。
+  浅色取值一个都没改，只是搬进了变量里。**顺带修掉三处硬编码**：
+  `.tag.ok/.warn/.bad` 的浅色底、`button:disabled` 的灰、`button` 的白底 ——
+  它们在深色下会各自留下一块亮斑。
+- `lib/panel.html`：新增主题脚本。优先级是
+  ① URL 上的 `?theme=dark|light`（宿主给的首帧）→ ② 宿主 `postMessage`
+  （`{ type: 'cookie-guard:theme', theme }`，切换主题时实时生效）→
+  ③ `prefers-color-scheme`（单独在浏览器里打开、没人告诉我们时）。
+  宿主一旦明确指定过，系统偏好就不再抢方向盘。
+- `lib/client.js`：以 `body[data-ds-dark-theme]` 为权威信号算出当前主题（属性比
+  `prefers-color-scheme` 准 —— 用户可以在浅色系统里选深色），呈现器还没跑起来时
+  才退回媒体查询；通过 `useSyncExternalStore` + `MutationObserver` 响应切换。
+  iframe 的 `src` 带上首次渲染时的 `?theme=`，之后的变化走 `postMessage`，
+  **不重载面板**（重载会白闪一下并重新拉一次状态）。
+- iframe 的加载底色和 `color-scheme` 也跟着主题走，深色宿主下不再先闪一块白。
+- 宿主没提供 react hooks 时一切照旧工作（退化成一次性读取，不抛错）。
+- 测试：新增 `test/theme.test.mjs`（26 项）—— 变量齐全性、深色两套取值逐项一致、
+  浅色取值无回归、深色文字对比度 ≥ 4.5:1、以及用 `node:vm` 跑面板主题脚本验证
+  「首帧」「实时切换」「跟随系统」「非法消息忽略」；`test/client.test.mjs`
+  从 16 项扩到 27 项（深浅两种宿主、属性压过媒体查询、无 hooks、无 matchMedia）。
+
 ## v0.3.5 — 2026-11-11
 
 **修一个体验上的坑：关掉启动器窗口，DSH 也会跟着退出。**

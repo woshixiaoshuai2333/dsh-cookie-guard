@@ -1,6 +1,6 @@
 {
     "name":  "dsh-cookie431",
-    "version":  "0.3.5",
+    "version":  "0.3.6",
     "type":  "module",
     "main":  "./lib/index.js",
     "exports":  {
@@ -57,7 +57,7 @@
                   "CHANGELOG.md"
               ],
     "scripts":  {
-                    "test":  "node test/selftest.mjs \u0026\u0026 node test/clean.test.mjs \u0026\u0026 node test/prelaunch.test.mjs \u0026\u0026 node test/panel.test.mjs \u0026\u0026 node test/client.test.mjs \u0026\u0026 node test/launcher.test.mjs",
+                    "test":  "node test/selftest.mjs \u0026\u0026 node test/clean.test.mjs \u0026\u0026 node test/prelaunch.test.mjs \u0026\u0026 node test/panel.test.mjs \u0026\u0026 node test/client.test.mjs \u0026\u0026 node test/theme.test.mjs \u0026\u0026 node test/launcher.test.mjs",
                     "check":  "node lib/probe.mjs --json",
                     "clean":  "node scripts/clean.mjs --dry-run",
                     "clean:force":  "node scripts/clean.mjs --force",

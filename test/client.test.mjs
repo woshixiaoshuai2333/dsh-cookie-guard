@@ -30,9 +30,26 @@ function check(name, ok, extra) {
 /** A minimal stand-in for the shell: loader, react, optional slots service. */
 function runClient(options = {}) {
   const log = []
-  const state = { module: null, threw: null, registered: [], rendered: null }
+  const state = { module: null, threw: null, registered: [], rendered: null, posted: [], effects: [] }
   const react = {
-    createElement: (tag, props, ...kids) => ({ tag, props: props ?? {}, kids })
+    createElement: (tag, props, ...kids) => {
+      const el = { tag, props: props ?? {}, kids }
+      if (tag === 'iframe') {
+        el.contentWindow = { postMessage: (msg) => state.posted.push(msg) }
+        // Mimic React attaching the ref before effects run.
+        if (el.props.ref) el.props.ref.current = el
+      }
+      return el
+    }
+  }
+  if (options.hooks !== false) {
+    react.useRef = (initial) => ({ current: initial ?? null })
+    react.useEffect = (fn) => { state.effects.push(fn) }
+    react.useSyncExternalStore = (subscribe, getSnapshot) => {
+      log.push('useSyncExternalStore')
+      state.subscribed = subscribe
+      return getSnapshot()
+    }
   }
   const makeCtx = () => {
     if (options.withoutSlots) return {}
@@ -48,6 +65,8 @@ function runClient(options = {}) {
           if (options.registerThrows) throw new Error('register boom')
           state.registered.push(desc)
           if (typeof Component === 'function') state.rendered = Component()
+          // Flush effects the way React does after a commit.
+          for (const fn of state.effects.splice(0)) fn()
           return () => {}
         }
       }
@@ -76,12 +95,26 @@ function runClient(options = {}) {
     window,
     location: { origin: options.origin ?? 'dsh-app://app' },
     console: { warn: () => {}, info: () => {}, error: () => {} },
-    document: { title: '' },
+    document: makeDocument(options),
     Set,
     Object,
     String,
     RegExp,
-    Error
+    Error,
+    URL
+  }
+  if (options.media !== undefined) {
+    sandbox.matchMedia = (query) => ({
+      matches: options.media === 'dark' && query.includes('dark'),
+      addEventListener: () => {},
+      removeEventListener: () => {}
+    })
+  }
+  if (options.mutationObserver !== false) {
+    sandbox.MutationObserver = class {
+      observe() {}
+      disconnect() {}
+    }
   }
   const context = vm.createContext(sandbox)
   try {
@@ -90,6 +123,24 @@ function runClient(options = {}) {
     state.threw = err
   }
   return { log, state, module: state.module }
+}
+
+/**
+ * The shell's document, reduced to what the theme code reads:
+ * `body[data-ds-dark-theme]` plus the presenter's `html { color-scheme }`.
+ * `options.dark`/`options.decided` drive readScheme()'s two branches.
+ */
+function makeDocument(options = {}) {
+  const attrs = new Set(options.dark ? ['data-ds-dark-theme'] : [])
+  return {
+    title: '',
+    body: {
+      hasAttribute: (name) => attrs.has(name),
+      setAttribute: (name) => { attrs.add(name) },
+      removeAttribute: (name) => { attrs.delete(name) }
+    },
+    documentElement: { style: { colorScheme: options.decided === false ? '' : (options.dark ? 'dark' : 'light') } }
+  }
 }
 
 console.log('client.test.mjs')
@@ -132,9 +183,10 @@ console.log('client.test.mjs')
   const { state } = runClient({ apply: true, origin: 'dsh-app://app' })
   const tree = state.rendered
   const iframe = (tree?.kids ?? []).find((kid) => kid && kid.tag === 'iframe')
+  const src = String(iframe?.props?.src)
   check(
     'falls back to the __DSH_BOOT__ http origin when origin is dsh-app://',
-    iframe?.props?.src === 'http://127.0.0.1:9999/cookie-guard/',
+    src.startsWith('http://127.0.0.1:9999/cookie-guard/'),
     iframe?.props?.src
   )
 }
@@ -155,6 +207,60 @@ console.log('client.test.mjs')
 {
   const { state } = runClient({ factoryThrows: true })
   check('a throwing factory does not throw', state.threw === null, String(state.threw))
+}
+
+/* 15-21: host colour scheme */
+{
+  // Light shell: the presenter has run and left the body attribute off.
+  const { state } = runClient({ apply: true, dark: false, decided: true })
+  const iframe = (state.rendered?.kids ?? []).find((kid) => kid && kid.tag === 'iframe')
+  check('light shell → ?theme=light on the iframe src', String(iframe?.props?.src).endsWith('?theme=light'), iframe?.props?.src)
+  check('light shell → iframe paints a light surface', iframe?.props?.style?.background === '#f6f7f9', iframe?.props?.style?.background)
+}
+{
+  // Dark shell: body[data-ds-dark-theme] is the authoritative signal.
+  const { state } = runClient({ apply: true, dark: true, decided: true })
+  const iframe = (state.rendered?.kids ?? []).find((kid) => kid && kid.tag === 'iframe')
+  check('dark shell → ?theme=dark on the iframe src', String(iframe?.props?.src).endsWith('?theme=dark'), iframe?.props?.src)
+  check('dark shell → iframe paints a dark surface', iframe?.props?.style?.background === '#17171a', iframe?.props?.style?.background)
+  check('dark shell → iframe gets color-scheme: dark', iframe?.props?.style?.colorScheme === 'dark', iframe?.props?.style?.colorScheme)
+  check(
+    'dark shell → the scheme is pushed into the frame over postMessage',
+    state.posted.some((msg) => msg && msg.type === 'cookie-guard:theme' && msg.theme === 'dark'),
+    JSON.stringify(state.posted)
+  )
+  check('iframe is mounted with a ref so the bridge can reach it', !!iframe?.props?.ref, 'no ref')
+}
+{
+  // The user picked dark while the OS is light: the attribute must win.
+  const { state } = runClient({ apply: true, dark: true, decided: true, media: 'light' })
+  const iframe = (state.rendered?.kids ?? []).find((kid) => kid && kid.tag === 'iframe')
+  check(
+    'body[data-ds-dark-theme] beats a light OS preference',
+    String(iframe?.props?.src).endsWith('?theme=dark'),
+    iframe?.props?.src
+  )
+}
+{
+  // Before the presenter runs there is no html{color-scheme}; the OS query is the best guess.
+  const { state } = runClient({ apply: true, dark: false, decided: false, media: 'dark' })
+  const iframe = (state.rendered?.kids ?? []).find((kid) => kid && kid.tag === 'iframe')
+  check(
+    'falls back to prefers-color-scheme before the presenter runs',
+    String(iframe?.props?.src).endsWith('?theme=dark'),
+    iframe?.props?.src
+  )
+}
+{
+  // No react hooks in the host: must still produce a themed iframe, no crash.
+  const { state } = runClient({ apply: true, hooks: false, dark: true, decided: true })
+  const iframe = (state.rendered?.kids ?? []).find((kid) => kid && kid.tag === 'iframe')
+  check('works without react hooks', state.threw === null && String(iframe?.props?.src).endsWith('?theme=dark'), String(state.threw))
+}
+{
+  // No matchMedia / MutationObserver at all: degrade to light, never throw.
+  const { state } = runClient({ apply: true, dark: false, decided: false, mutationObserver: false })
+  check('no matchMedia or MutationObserver does not throw', state.threw === null, String(state.threw))
 }
 
 console.log(`\n${fail === 0 ? 'ALL PASS' : 'FAILED'} — ${pass} passed, ${fail} failed`)

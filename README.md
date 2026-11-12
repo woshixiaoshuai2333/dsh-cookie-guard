@@ -1,6 +1,6 @@
 # dsh-cookie-guard
 
-[![tests](https://img.shields.io/badge/tests-5%20suites%20passing-brightgreen)](#测试)
+[![tests](https://img.shields.io/badge/tests-7%20suites%20passing-brightgreen)](#测试)
 [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![npm](https://img.shields.io/badge/npm-dsh--cookie431-cb3837)](https://www.npmjs.com/package/dsh-cookie431)
 ![platform](https://img.shields.io/badge/platform-Windows%20%7C%20DSH%20Desktop-lightgrey)
@@ -171,6 +171,14 @@ node scripts/panel-serve.mjs        # → http://127.0.0.1:47823/cookie-guard/
 它读的是 `cookie-guard/last-report.json`（启动前体检写的），所以**不需要 DSH 关着**也能看，
 而且数字来源可追溯——`launcher.log` 里能看到同一批数字。
 
+面板在 DSH 设置页里会**跟随宿主的深浅色**：宿主把当前主题写在 iframe 的 `?theme=` 上，
+之后切换主题用 `postMessage` 实时同步，不会重载页面。单独在浏览器里打开时没有宿主可问，
+就跟随系统的 `prefers-color-scheme`。想手动看一眼深色：
+
+```
+http://127.0.0.1:47823/cookie-guard/?theme=dark
+```
+
 ### 5. 面板上的「立即清理并重启」（第 3 步）
 
 点一下会发生什么：
@@ -285,7 +293,7 @@ probe.mjs         --json
 ## 测试
 
 ```bash
-npm test        # 六套：自检 / clean / prelaunch / 面板路由 / 客户端契约 / 启动器安装
+npm test        # 七套：自检 / clean / prelaunch / 面板路由 / 客户端契约 / 主题跟随 / 启动器安装
 ```
 
 | 套件 | 项数 | 管什么 |
@@ -294,7 +302,8 @@ npm test        # 六套：自检 / clean / prelaunch / 面板路由 / 客户端
 | `test/clean.test.mjs` | 18 | 清理、保留最新一条、dry-run、64 位时间戳精度 |
 | `test/prelaunch.test.mjs` | 8 | 阈值判定、被占用时绝不阻塞启动 |
 | `test/panel.test.mjs` | 42 | 五个接口、405 语义、前缀误匹配、启动器状态与安装 |
-| `test/client.test.mjs` | 16 | 设置页插槽契约（`inject` 必须是 `["slots"]`） |
+| `test/client.test.mjs` | 27 | 设置页插槽契约（`inject` 必须是 `["slots"]`）、深浅色识别与 iframe 主题桥 |
+| `test/theme.test.mjs` | 26 | 面板配色变量齐全性、深色两套取值一致、浅色取值无回归、深色对比度、主题脚本行为 |
 | `test/launcher.test.mjs` | 25 | 生成的 `.cmd` 是纯 ASCII + CRLF、dry-run 不落盘、路径可覆盖 |
 
 测试全部在临时目录里跑（`APPDATA` / `DSH_HOME` / `CG_LAUNCHER_DIR` / `CG_DESKTOP_DIR` 指向 tmp），
