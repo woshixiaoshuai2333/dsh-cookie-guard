@@ -173,7 +173,11 @@ node scripts/panel-serve.mjs        # → http://127.0.0.1:47823/cookie-guard/
 
 面板在 DSH 设置页里会**跟随宿主的深浅色**：宿主把当前主题写在 iframe 的 `?theme=` 上，
 之后切换主题用 `postMessage` 实时同步，不会重载页面。单独在浏览器里打开时没有宿主可问，
-就跟随系统的 `prefers-color-scheme`。想手动看一眼深色：
+就跟随系统的 `prefers-color-scheme`。
+
+深色取值直接对齐 DSH 原生 `ui-theme` 的 alias token（`bg-base`、`bg-layer-1`、
+`label-primary/tertiary`、`state-*`），**不跟随任何主题皮肤**——你换皮肤时这个面板
+保持原生中性色，不会被染成皮肤配色。想手动看一眼深色：
 
 ```
 http://127.0.0.1:47823/cookie-guard/?theme=dark
@@ -301,9 +305,9 @@ npm test        # 七套：自检 / clean / prelaunch / 面板路由 / 客户端
 | `test/selftest.mjs` | 5 | 探针能否正确数出 `dsh-auth-*`、不把无关 cookie 算进来 |
 | `test/clean.test.mjs` | 18 | 清理、保留最新一条、dry-run、64 位时间戳精度 |
 | `test/prelaunch.test.mjs` | 8 | 阈值判定、被占用时绝不阻塞启动 |
-| `test/panel.test.mjs` | 42 | 五个接口、405 语义、前缀误匹配、启动器状态与安装 |
+| `test/panel.test.mjs` | 44 | 五个接口、405 语义、前缀误匹配、启动器状态与安装、版本号来自 package.json |
 | `test/client.test.mjs` | 27 | 设置页插槽契约（`inject` 必须是 `["slots"]`）、深浅色识别与 iframe 主题桥 |
-| `test/theme.test.mjs` | 26 | 面板配色变量齐全性、深色两套取值一致、浅色取值无回归、深色对比度、主题脚本行为 |
+| `test/theme.test.mjs` | 31 | 配色变量齐全性、深色两套取值一致、浅色取值无回归、深色必须等于 DSH 原生 token（不跟随皮肤）、对比度、主题脚本行为 |
 | `test/launcher.test.mjs` | 25 | 生成的 `.cmd` 是纯 ASCII + CRLF、dry-run 不落盘、路径可覆盖 |
 
 测试全部在临时目录里跑（`APPDATA` / `DSH_HOME` / `CG_LAUNCHER_DIR` / `CG_DESKTOP_DIR` 指向 tmp），

@@ -8,12 +8,19 @@
 宿主的 `--dsw-*` 令牌和 `body[data-ds-dark-theme]` 都进不了它的 iframe ——
 所以宿主切到深色时，这一页仍然是白底黑字，放在一起很扎眼。
 
-- `lib/panel.html`：配色全部改成变量，新增一整套深色取值（对齐 DSH 官方 ui-theme：
-  `bg-layer-2/1`、`border-l2`、`label-primary/tertiary`、`state-business-primary`、
-  `state-error-primary`），并声明 `color-scheme` 让原生控件（滚动条、下拉）一起变。
-  浅色取值一个都没改，只是搬进了变量里。**顺带修掉三处硬编码**：
-  `.tag.ok/.warn/.bad` 的浅色底、`button:disabled` 的灰、`button` 的白底 ——
-  它们在深色下会各自留下一块亮斑。
+- `lib/panel.html`：配色全部改成变量，新增一整套深色取值，并声明 `color-scheme`
+  让原生控件（滚动条、下拉）一起变。浅色取值一个都没改，只是搬进了变量里。
+  **顺带修掉三处硬编码**：`.tag.ok/.warn/.bad` 的浅色底、`button:disabled` 的灰、
+  `button` 的白底 —— 它们在深色下会各自留下一块亮斑。
+- **深色取值只对齐 DSH 原生 `ui-theme` 的 alias token，不跟随任何主题皮肤**。
+  每个值都能追溯：`--bg` ← `bg-base`(#151517)、`--card` ← `bg-layer-1`(#232324)、
+  `--text` ← `label-primary`(#f9fafb)、`--muted` ← `label-tertiary`(#adb2b8)、
+  `--accent` ← `state-business-primary`(#7aaaff)、`--ok/--warn/--bad` ←
+  `state-success/warn/error-primary`、`--btn-bg` ← `button-elevated-fill`(#43454a)、
+  `--tag-*-bg` ← `state-*-tertiary`。这些值是从
+  `@deepseek-ai/dsh-client-ui-theme` 的 design-platform CSS 里把 `var()` 链解开得到的。
+  皮肤（如 `dsh-claude-style`）覆盖的是同一批 token（它把 `bg-base` 改成 `#191919`、
+  强调色改成 Claude 橙 `#d97757`），所以插件面板保持原生中性色，不会被皮肤染色。
 - `lib/panel.html`：新增主题脚本。优先级是
   ① URL 上的 `?theme=dark|light`（宿主给的首帧）→ ② 宿主 `postMessage`
   （`{ type: 'cookie-guard:theme', theme }`，切换主题时实时生效）→
@@ -26,10 +33,15 @@
   **不重载面板**（重载会白闪一下并重新拉一次状态）。
 - iframe 的加载底色和 `color-scheme` 也跟着主题走，深色宿主下不再先闪一块白。
 - 宿主没提供 react hooks 时一切照旧工作（退化成一次性读取，不抛错）。
-- 测试：新增 `test/theme.test.mjs`（26 项）—— 变量齐全性、深色两套取值逐项一致、
-  浅色取值无回归、深色文字对比度 ≥ 4.5:1、以及用 `node:vm` 跑面板主题脚本验证
+- **修一个既有的小缺陷**：面板头部的版本号原本写死成 `v0.2.0 · 第 1、2 步`，
+  早已和实际版本脱节。现在 `/api/status` 从 `package.json` 读版本，
+  面板照实显示（当前 `v0.3.6`）。
+- 测试：新增 `test/theme.test.mjs`（31 项）—— 变量齐全性、深色两套取值逐项一致、
+  浅色取值无回归、**深色必须等于原生 token 且不得混入皮肤取值**、深色文字
+  对比度 ≥ 4.5:1、主按钮前景对比度，以及用 `node:vm` 跑面板主题脚本验证
   「首帧」「实时切换」「跟随系统」「非法消息忽略」；`test/client.test.mjs`
-  从 16 项扩到 27 项（深浅两种宿主、属性压过媒体查询、无 hooks、无 matchMedia）。
+  从 16 项扩到 27 项（深浅两种宿主、属性压过媒体查询、无 hooks、无 matchMedia）；
+  `test/panel.test.mjs` 44 项（新增版本号不再写死、status 带真实版本两项）。
 
 ## v0.3.5 — 2026-11-11
 

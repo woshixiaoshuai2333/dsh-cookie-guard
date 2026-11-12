@@ -57,7 +57,7 @@ const media = declarations(block(':root:not([data-theme]) {'))
 const REQUIRED = [
   '--bg', '--card', '--line', '--text', '--muted',
   '--ok', '--warn', '--bad', '--accent',
-  '--btn-bg', '--chip-bg', '--chip-fg',
+  '--btn-bg', '--btn-primary-fg', '--chip-bg', '--chip-fg',
   '--tag-info-bg', '--tag-ok-bg', '--tag-warn-bg', '--tag-bad-bg'
 ]
 
@@ -133,10 +133,55 @@ check(
   Object.entries(LIGHT_BASELINE).filter(([k, v]) => light[k] !== v).map(([k, v]) => `${k}: ${light[k]} != ${v}`).join('; ')
 )
 
+// 深色必须来自 DSH 原生 ui-theme 的 alias token，不能取任何主题皮肤的值。
+// 这些字面值是从 @deepseek-ai/dsh-client-ui-theme 的 design-platform CSS 里
+// 把 var() 链解开后得到的（浅色的 #fff/#0f1115 等也同样出自那里）。
+const NATIVE_DARK = {
+  '--bg': '#151517',      // --dsw-alias-bg-base
+  '--card': '#232324',    // --dsw-alias-bg-layer-1
+  '--line': '#ffffff1f',  // --dsw-alias-border-l2
+  '--text': '#f9fafb',    // --dsw-alias-label-primary
+  '--muted': '#adb2b8',   // --dsw-alias-label-tertiary
+  '--accent': '#7aaaff',  // --dsw-alias-state-business-primary
+  '--ok': '#22c55e',      // --dsw-alias-state-success-primary
+  '--warn': '#f59e0b',    // --dsw-alias-state-warn-primary
+  '--bad': '#f25a5a'      // --dsw-alias-state-error-primary
+}
+check(
+  '深色取自 DSH 原生 ui-theme token（不跟随主题皮肤）',
+  Object.entries(NATIVE_DARK).every(([k, v]) => dark[k] === v),
+  Object.entries(NATIVE_DARK).filter(([k, v]) => dark[k] !== v).map(([k, v]) => `${k}: ${dark[k]} != ${v}`).join('; ')
+)
+
+// 深色下不能出现「皮肤味」的旧值——这些是别的插件 preview 里写的仿制品。
+const SKIN_SMELL = ['#17171a', '#212123', '#ebeef2', '#4cc38a', '#f0b429', '#ff6b6b', '#292929', '#979da6']
+const darkBlockText = block(':root[data-theme="dark"] {')
+check(
+  '深色块里没有混入仿制/皮肤取值',
+  SKIN_SMELL.every((bad) => !darkBlockText.toLowerCase().includes(bad)),
+  SKIN_SMELL.filter((bad) => darkBlockText.toLowerCase().includes(bad)).join(',')
+)
+
 check(
   '深色：--muted 不靠得太近 --text（两档分明）',
   contrast(dark['--muted'], dark['--card']) < contrast(dark['--text'], dark['--card']),
   ''
+)
+
+// 主按钮是「强调色底 + 前景色字」。深色下强调色是浅蓝，用白字只有 2.3:1，
+// 所以前景必须单独给一个深色值——这里把两层都卡住。
+for (const [label, palette] of [['浅色', light], ['深色', dark]]) {
+  const ratio = contrast(palette['--btn-primary-fg'], palette['--accent'])
+  check(
+    `${label}：主按钮文字在强调色底上对比度 ≥ 4.5`,
+    ratio >= 4.5,
+    `ratio=${ratio.toFixed(2)}`
+  )
+}
+check(
+  '浅色主按钮仍是白字（外观不变）',
+  light['--btn-primary-fg'] === '#ffffff',
+  light['--btn-primary-fg']
 )
 
 /* ── 动态：把主题脚本抽出来跑 ─────────────────────────────────── */

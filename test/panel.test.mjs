@@ -55,6 +55,7 @@ try {
     ok('Content-Type 是 html', /text\/html/.test(r.headers.get('content-type') || ''))
     ok('页面里有标题', body.includes('DSH Cookie Guard'))
     ok('页面里有按钮文案', body.includes('立即清理并重启'))
+    ok('版本号不再写死在页面里', !/v0\.\d+\.\d+ ·/.test(body), 'body 里还有硬编码版本')
     hits.push('page')
   }
 
@@ -69,6 +70,7 @@ try {
     ok('history 为空数组', Array.isArray(j.report.history) && j.report.history.length === 0)
     ok('不再暴露 backups 字段', j.backups === undefined, JSON.stringify(j.backups))
     ok('报告路径用的是临时目录', String(j.report.path).startsWith(tmp), j.report.path)
+    ok('status 带真实版本号（来自 package.json）', /^\d+\.\d+\.\d+$/.test(String(j.version)), String(j.version))
     hits.push('empty')
   }
 

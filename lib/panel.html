@@ -19,6 +19,7 @@
     --bad: #dc2626;
     --accent: #2563eb;
     --btn-bg: #ffffff;
+    --btn-primary-fg: #ffffff;
     --chip-bg: #eef0f3;
     --chip-fg: #9aa1ab;
     --tag-info-bg: #eef2ff;
@@ -27,27 +28,40 @@
     --tag-bad-bg: #fef2f2;
     --skel: rgba(127, 127, 127, .18);
   }
-  /* 深色。取值对齐 DSH 官方 ui-theme 令牌（bg-layer-2/1、border-l2、
-     label-primary/tertiary、state-business-primary、state-error-primary），
-     这样嵌在宿主设置页里时和周围界面是同一套观感。 */
+  /* 深色。取值逐一对应 DSH 原生 ui-theme 的 alias token（不是任何主题皮肤的配色）：
+       --bg          ← --dsw-alias-bg-base                 #151517
+       --card        ← --dsw-alias-bg-layer-1              #232324
+       --line        ← --dsw-alias-border-l2               #ffffff1f
+       --text        ← --dsw-alias-label-primary           #f9fafb
+       --muted       ← --dsw-alias-label-tertiary          #adb2b8
+       --accent      ← --dsw-alias-state-business-primary  #7aaaff
+       --ok          ← --dsw-alias-state-success-primary   #22c55e
+       --warn        ← --dsw-alias-state-warn-primary      #f59e0b
+       --bad         ← --dsw-alias-state-error-primary     #f25a5a
+       --btn-bg      ← --dsw-alias-button-elevated-fill    #43454a
+       --chip-bg     ← --dsw-alias-interactive-bg-hover    #ffffff14
+       --chip-fg     ← --dsw-alias-label-secondary         #cfd3d6
+       --tag-*-bg    ← --dsw-alias-state-*-tertiary        #233c2c / #27241f / #34415b
+     皮肤（如 dsh-claude-style）覆盖的是同一批 token，所以两边观感一致。 */
   :root[data-theme="dark"] {
     color-scheme: dark;
-    --bg: #17171a;
-    --card: #212123;
+    --bg: #151517;
+    --card: #232324;
     --line: #ffffff1f;
-    --text: #ebeef2;
+    --text: #f9fafb;
     --muted: #adb2b8;
-    --ok: #4cc38a;
-    --warn: #f0b429;
-    --bad: #ff6b6b;
+    --ok: #22c55e;
+    --warn: #f59e0b;
+    --bad: #f25a5a;
     --accent: #7aaaff;
-    --btn-bg: #292929;
+    --btn-bg: #43454a;
+    --btn-primary-fg: #0f1115;
     --chip-bg: #ffffff14;
-    --chip-fg: #979da6;
-    --tag-info-bg: rgba(122, 170, 255, .14);
-    --tag-ok-bg: rgba(76, 195, 138, .14);
-    --tag-warn-bg: rgba(240, 180, 41, .14);
-    --tag-bad-bg: rgba(255, 107, 107, .14);
+    --chip-fg: #cfd3d6;
+    --tag-info-bg: #34415b;
+    --tag-ok-bg: #233c2c;
+    --tag-warn-bg: #27241f;
+    --tag-bad-bg: #3a1d1d;
     --skel: rgba(255, 255, 255, .14);
   }
   /* 兜底：脚本没跑起来（或浏览器里禁用 JS）时也得跟随系统深色。
@@ -55,22 +69,23 @@
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme]) {
       color-scheme: dark;
-      --bg: #17171a;
-      --card: #212123;
+      --bg: #151517;
+      --card: #232324;
       --line: #ffffff1f;
-      --text: #ebeef2;
+      --text: #f9fafb;
       --muted: #adb2b8;
-      --ok: #4cc38a;
-      --warn: #f0b429;
-      --bad: #ff6b6b;
+      --ok: #22c55e;
+      --warn: #f59e0b;
+      --bad: #f25a5a;
       --accent: #7aaaff;
-      --btn-bg: #292929;
+      --btn-bg: #43454a;
+      --btn-primary-fg: #0f1115;
       --chip-bg: #ffffff14;
-      --chip-fg: #979da6;
-      --tag-info-bg: rgba(122, 170, 255, .14);
-      --tag-ok-bg: rgba(76, 195, 138, .14);
-      --tag-warn-bg: rgba(240, 180, 41, .14);
-      --tag-bad-bg: rgba(255, 107, 107, .14);
+      --chip-fg: #cfd3d6;
+      --tag-info-bg: #34415b;
+      --tag-ok-bg: #233c2c;
+      --tag-warn-bg: #27241f;
+      --tag-bad-bg: #3a1d1d;
       --skel: rgba(255, 255, 255, .14);
     }
   }
@@ -132,7 +147,7 @@
   button:disabled, button.primary:disabled {
     background: var(--chip-bg); border-color: var(--line); color: var(--chip-fg);
   }
-  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: var(--btn-primary-fg); }
   button.ghost { background: transparent; border-style: dashed; }
   .hint { color: var(--muted); font-size: 12px; }
 
@@ -198,7 +213,7 @@
 <div class="wrap">
   <header>
     <h1>DSH Cookie Guard</h1>
-    <span class="ver" id="ver">v0.2.0 · 第 1、2 步</span>
+    <span class="ver" id="ver"></span>
   </header>
   <div class="sub">只看不改。所有数字都来自启动前体检写下的报告，不是估算。</div>
 
@@ -279,6 +294,9 @@
     var skipped = (last && !hasNum(last)) ? last : null;
 
     $('reportPath').textContent = rep.path || '—';
+    // 版本号由 /api/status 从 package.json 带过来，面板里不再写死（以前写死了 v0.2.0 就不会再变）。
+    var ver = $('ver');
+    if (ver && data.version) ver.textContent = 'v' + data.version;
 
     if (!shown) {
       $('before').textContent = '—';

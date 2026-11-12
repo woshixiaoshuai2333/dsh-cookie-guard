@@ -215,14 +215,22 @@ console.log('client.test.mjs')
   const { state } = runClient({ apply: true, dark: false, decided: true })
   const iframe = (state.rendered?.kids ?? []).find((kid) => kid && kid.tag === 'iframe')
   check('light shell → ?theme=light on the iframe src', String(iframe?.props?.src).endsWith('?theme=light'), iframe?.props?.src)
-  check('light shell → iframe paints a light surface', iframe?.props?.style?.background === '#f6f7f9', iframe?.props?.style?.background)
+  check(
+    'light shell → iframe paints the native light surface (bg-base)',
+    iframe?.props?.style?.background === '#fff',
+    iframe?.props?.style?.background
+  )
 }
 {
   // Dark shell: body[data-ds-dark-theme] is the authoritative signal.
   const { state } = runClient({ apply: true, dark: true, decided: true })
   const iframe = (state.rendered?.kids ?? []).find((kid) => kid && kid.tag === 'iframe')
   check('dark shell → ?theme=dark on the iframe src', String(iframe?.props?.src).endsWith('?theme=dark'), iframe?.props?.src)
-  check('dark shell → iframe paints a dark surface', iframe?.props?.style?.background === '#17171a', iframe?.props?.style?.background)
+  check(
+    'dark shell → iframe paints the native dark surface (bg-base)',
+    iframe?.props?.style?.background === '#151517',
+    iframe?.props?.style?.background
+  )
   check('dark shell → iframe gets color-scheme: dark', iframe?.props?.style?.colorScheme === 'dark', iframe?.props?.style?.colorScheme)
   check(
     'dark shell → the scheme is pushed into the frame over postMessage',
