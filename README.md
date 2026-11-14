@@ -1,5 +1,18 @@
 # dsh-cookie-guard
 
+> ## ⚠️ 已由官方修复，本插件不再需要（2026-11-13）
+>
+> DSH Desktop **0.2.2-rc.3** 已修复本文描述的启动失败问题，**建议直接升级，然后卸载本插件**。
+>
+> - **rc.2**（2026-11-11）：*「修复桌面端多次启动后，因鉴权信息累积而无法启动的问题」* —— 这就是本文说的问题。
+> - **rc.3**（2026-11-13）：在 rc.2 基础上修复了 Windows 桌面版应用内更新可能失败的问题。
+>
+> **实测结论（2026-11-14，rc.3）**：`Network\Cookies` 里 `dsh-auth-*` 稳定为 **0 条** —— 连续启动两轮后仍是 0，且 `Cookies` 文件的 mtime 不再变动。rc.3 **不再把握手鉴权写进磁盘 cookie**（不是"同名覆盖"，是整条不再写入），所以 HTTP 431 的根因从根本上消失，历史累积也一并不再使用。
+>
+> 卸载方式：从 profile 的 `package.json` 里删掉 `dependencies` 和 `dsh.profile.bundles` 中的 `dsh-cookie431`，再 `pnpm install`、重启 DSH。装过启动器的，顺手删 `%LOCALAPPDATA%\dsh-cookie431\` 和桌面快捷方式。
+>
+> 本项目**保留为历史参考**，供仍在旧版本（≤ 0.2.2-rc.1）上挣扎的用户；也留着记录一套"先取证、再动手、可回滚"的排查过程。
+
 [![tests](https://img.shields.io/badge/tests-5%20suites%20passing-brightgreen)](#测试)
 [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![npm](https://img.shields.io/badge/npm-dsh--cookie431-cb3837)](https://www.npmjs.com/package/dsh-cookie431)
